@@ -54,8 +54,14 @@ function getEmailTemplate(content: string): string {
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<boolean> {
+  console.log('=== EMAIL SEND ATTEMPT ===');
+  console.log('To:', to);
+  console.log('Subject:', subject);
+  console.log('API Key exists:', !!process.env.RESEND_API_KEY);
+  console.log('API Key prefix:', process.env.RESEND_API_KEY?.substring(0, 10) + '...');
+  
   try {
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
@@ -63,11 +69,11 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
     });
 
     if (error) {
-      console.error('Email send error:', error);
+      console.error('Email send error:', JSON.stringify(error, null, 2));
       return false;
     }
 
-    console.log(`Email sent successfully to ${to}`);
+    console.log('Email sent successfully! ID:', data?.id);
     return true;
   } catch (err) {
     console.error('Email service error:', err);
