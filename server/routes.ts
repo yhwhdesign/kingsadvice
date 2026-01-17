@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, requireAuth } from "./auth";
-import { sendExpertRequestConfirmation, sendResponseReadyNotification, sendAdminNotification } from "./email";
+import { sendExpertRequestConfirmation, sendExpertResponseReady, sendAdminNotification, sendBasicThankYou, sendAIAnalystThankYou } from "./email";
 import { insertRequestSchema, updateRequestSchema, insertBasicQuestionSchema, updateBasicQuestionSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
@@ -94,17 +94,28 @@ export async function registerRoutes(
           response,
         });
 
+        // Notify admin of new basic request
+        sendAdminNotification(request.id, request.customerName, request.tier, request.description)
+          .catch(err => console.error('Admin notification error:', err));
 
-      } else if (request.tier === 'expert') {
-        // Send confirmation email for expert tier
+        // Send thank you email with response to customer
+        sendBasicThankYou(request.customerEmail, request.customerName, topic, response)
+          .catch(err => console.error('Basic thank you email error:', err));
+
+      } else if (request.tier === 'custom') {
+        // Send confirmation email for custom/expert tier
         sendExpertRequestConfirmation(request.customerEmail, request.customerName, request.id)
           .catch(err => console.error('Expert email error:', err));
 
-        // Notify admin of new expert request
+        // Notify admin of new custom/expert request
         sendAdminNotification(request.id, request.customerName, request.tier, request.description)
           .catch(err => console.error('Admin notification error:', err));
 
       } else if (request.tier === 'middle') {
+        // Notify admin of new AI Analyst request
+        sendAdminNotification(request.id, request.customerName, request.tier, request.description)
+          .catch(err => console.error('Admin notification error:', err));
+
         // Simulate AI processing
         setTimeout(async () => {
           let aiResponse = "AI Consultant Analysis:\n\n";
@@ -124,6 +135,10 @@ export async function registerRoutes(
             status: 'completed',
             response: aiResponse,
           });
+
+          // Send thank you email with AI response to customer
+          sendAIAnalystThankYou(request.customerEmail, request.customerName, aiResponse)
+            .catch(err => console.error('AI Analyst thank you email error:', err));
 
         }, 4000);
       }
@@ -174,12 +189,15 @@ export async function registerRoutes(
         return res.status(400).json({ error: validationError.message });
       }
 
-      // Get original request to check if this is a new response
+      // Get original request to check for response changes
       const originalRequest = await storage.getRequest(req.params.id);
-      const isNewResponse = originalRequest && 
-        !originalRequest.response && 
+      
+      // Check if admin is sending/updating a response (only for custom/expert tier)
+      const isSendingExpertResponse = originalRequest && 
+        originalRequest.tier === 'custom' &&
         validationResult.data.response && 
-        validationResult.data.status === 'completed';
+        validationResult.data.status === 'completed' &&
+        originalRequest.response !== validationResult.data.response;
 
       const updated = await storage.updateRequest(req.params.id, validationResult.data);
       
@@ -187,9 +205,10 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Request not found" });
       }
 
-      // Send email notification when admin sends a response
-      if (isNewResponse) {
-        sendResponseReadyNotification(updated.customerEmail, updated.customerName, updated.id, updated.tier)
+      // Send email notification when admin sends expert response
+      if (isSendingExpertResponse && updated.response) {
+        console.log('Sending expert response notification to:', updated.customerEmail);
+        sendExpertResponseReady(updated.customerEmail, updated.customerName, updated.response)
           .catch(err => console.error('Response notification error:', err));
       }
       

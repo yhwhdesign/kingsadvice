@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM_EMAIL = 'Kings Advice <onboarding@resend.dev>';
+const SITE_URL = process.env.SITE_URL || 'https://kingsadvice.onrender.com';
 
 interface SendEmailOptions {
   to: string;
@@ -31,6 +32,7 @@ function getEmailTemplate(content: string): string {
         .response-box p { margin: 0; white-space: pre-wrap; }
         .cta-button { display: inline-block; background: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 15px 0; }
         .info-box { background: #fff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .upsell-box { background: #fef3c7; border: 1px solid #fcd34d; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
         .footer { padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; background: #f1f5f9; }
       </style>
     </head>
@@ -81,6 +83,52 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
   }
 }
 
+export async function sendBasicThankYou(customerEmail: string, customerName: string, topic: string, response: string): Promise<boolean> {
+  const content = `
+    <p>Dear ${customerName},</p>
+    <p>Thank you for choosing <span class="badge badge-basic">Basic Consult - $29</span>!</p>
+    <p>Here is your expert guidance on <strong>"${topic}"</strong>:</p>
+    <div class="response-box">
+      <p>${response}</p>
+    </div>
+    <div class="upsell-box">
+      <p><strong>Need more personalized advice?</strong></p>
+      <p>Our Expert Review service ($499) provides a custom, in-depth analysis from a senior consultant tailored specifically to your situation.</p>
+      <a href="${SITE_URL}" class="cta-button">Get Expert Review</a>
+    </div>
+    <p>Best regards,<br><strong>The Kings Advice Team</strong></p>
+  `;
+
+  return sendEmail({
+    to: customerEmail,
+    subject: 'Your Basic Consult Response - Kings Advice',
+    html: getEmailTemplate(content),
+  });
+}
+
+export async function sendAIAnalystThankYou(customerEmail: string, customerName: string, response: string): Promise<boolean> {
+  const content = `
+    <p>Dear ${customerName},</p>
+    <p>Thank you for choosing <span class="badge badge-ai">AI Analyst - $99</span>!</p>
+    <p>Here is your AI-powered analysis:</p>
+    <div class="response-box">
+      <p>${response}</p>
+    </div>
+    <div class="upsell-box">
+      <p><strong>Want even deeper insights?</strong></p>
+      <p>Our Expert Review service ($499) connects you with a senior consultant who will conduct a thorough, personalized analysis of your specific situation.</p>
+      <a href="${SITE_URL}" class="cta-button">Get Expert Review</a>
+    </div>
+    <p>Best regards,<br><strong>The Kings Advice Team</strong></p>
+  `;
+
+  return sendEmail({
+    to: customerEmail,
+    subject: 'Your AI Analyst Response - Kings Advice',
+    html: getEmailTemplate(content),
+  });
+}
+
 export async function sendExpertRequestConfirmation(customerEmail: string, customerName: string, requestId: string): Promise<boolean> {
   const content = `
     <p>Dear ${customerName},</p>
@@ -92,10 +140,9 @@ export async function sendExpertRequestConfirmation(customerEmail: string, custo
       <ul style="margin: 10px 0 0; padding-left: 20px;">
         <li>A senior consultant will be assigned to your case</li>
         <li>They will conduct a thorough analysis of your situation</li>
-        <li>You'll receive a comprehensive, actionable response</li>
+        <li>You'll receive your response via email</li>
       </ul>
     </div>
-    <p>You can track the status of your request anytime by visiting your customer dashboard.</p>
     <p>If you have any questions in the meantime, please don't hesitate to reach out.</p>
     <p>Best regards,<br><strong>The Kings Advice Team</strong></p>
   `;
@@ -107,69 +154,21 @@ export async function sendExpertRequestConfirmation(customerEmail: string, custo
   });
 }
 
-export async function sendAIAnalystConfirmation(customerEmail: string, customerName: string, requestId: string): Promise<boolean> {
+export async function sendExpertResponseReady(customerEmail: string, customerName: string, response: string): Promise<boolean> {
   const content = `
     <p>Dear ${customerName},</p>
-    <p>Thank you for choosing our <span class="badge badge-ai">AI Analyst - $99</span> service!</p>
-    <p>Your request has been submitted and our AI-powered analysis system is processing it now. You should receive your personalized insights within <strong>just a few moments</strong>.</p>
-    <div class="info-box">
-      <p><strong>Request ID:</strong> ${requestId}</p>
-      <p style="margin-top: 10px; margin-bottom: 0;"><strong>What our AI Analyst does:</strong></p>
-      <ul style="margin: 10px 0 0; padding-left: 20px;">
-        <li>Analyzes your specific business challenge</li>
-        <li>Draws from industry best practices</li>
-        <li>Provides actionable recommendations</li>
-      </ul>
+    <p>Great news! Your <span class="badge badge-expert">Expert Review</span> response is ready.</p>
+    <p>Our senior consultant has completed their in-depth analysis of your situation. Here are your personalized insights and recommendations:</p>
+    <div class="response-box">
+      <p>${response}</p>
     </div>
-    <p>Check your dashboard shortly - your analysis will be ready soon!</p>
-    <p>Best regards,<br><strong>The Kings Advice Team</strong></p>
-  `;
-
-  return sendEmail({
-    to: customerEmail,
-    subject: 'Your AI Analysis is Being Processed - Kings Advice',
-    html: getEmailTemplate(content),
-  });
-}
-
-export async function sendBasicConsultConfirmation(customerEmail: string, customerName: string, requestId: string, topic: string): Promise<boolean> {
-  const content = `
-    <p>Dear ${customerName},</p>
-    <p>Thank you for using our <span class="badge badge-basic">Basic Consult - $29</span> service!</p>
-    <p>Your request regarding <strong>"${topic}"</strong> has been completed. Our expert knowledge base has provided you with guidance based on industry best practices.</p>
-    <div class="info-box">
-      <p><strong>Request ID:</strong> ${requestId}</p>
-    </div>
-    <p>Your response is ready! Visit your customer dashboard to view the full details.</p>
-    <p>Need more personalized advice? Consider upgrading to our AI Analyst or Expert Review services for deeper insights tailored to your specific situation.</p>
-    <p>Best regards,<br><strong>The Kings Advice Team</strong></p>
-  `;
-
-  return sendEmail({
-    to: customerEmail,
-    subject: 'Your Basic Consult Response is Ready - Kings Advice',
-    html: getEmailTemplate(content),
-  });
-}
-
-export async function sendResponseReadyNotification(customerEmail: string, customerName: string, requestId: string, tier: string): Promise<boolean> {
-  const tierDisplay = tier === 'expert' ? 'Expert Review' : tier === 'middle' ? 'AI Analyst' : 'Basic Consult';
-  
-  const content = `
-    <p>Dear ${customerName},</p>
-    <p>Great news! Your <strong>${tierDisplay}</strong> consulting response is now ready.</p>
-    <div class="info-box">
-      <p><strong>Request ID:</strong> ${requestId}</p>
-    </div>
-    <p>Our team has completed the analysis of your request and prepared a detailed response for you.</p>
-    <p>Visit your customer dashboard now to view your personalized consulting insights and recommendations.</p>
     <p>We hope this guidance helps you achieve your business goals. If you have any follow-up questions or need additional consulting, we're always here to help.</p>
     <p>Best regards,<br><strong>The Kings Advice Team</strong></p>
   `;
 
   return sendEmail({
     to: customerEmail,
-    subject: `Your ${tierDisplay} Response is Ready - Kings Advice`,
+    subject: 'Your Expert Review Response is Ready - Kings Advice',
     html: getEmailTemplate(content),
   });
 }
@@ -181,7 +180,7 @@ export async function sendAdminNotification(requestId: string, customerName: str
     return false;
   }
 
-  const tierDisplay = tier === 'expert' ? 'Expert Review ($499)' : tier === 'middle' ? 'AI Analyst ($99)' : 'Basic Consult ($29)';
+  const tierDisplay = tier === 'custom' ? 'Expert Review ($499)' : tier === 'middle' ? 'AI Analyst ($99)' : 'Basic Consult ($29)';
   
   const content = `
     <p><strong>New Consulting Request Received</strong></p>
