@@ -26,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await adminLogout();
-    queryClient.setQueryData(["admin-status"], { isAdmin: false });
+    queryClient.clear();
     window.location.href = "/";
   };
 
