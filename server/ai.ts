@@ -13,12 +13,18 @@ function getGeminiClient(): GoogleGenerativeAI | null {
 }
 
 export async function generateAIConsultingResponse(customerName: string, businessQuestion: string): Promise<string> {
+  console.log("=== AI RESPONSE GENERATION STARTED ===");
+  console.log("Customer:", customerName);
+  console.log("Question:", businessQuestion);
+  
   const genAI = getGeminiClient();
   if (!genAI) {
     console.warn("GEMINI_API_KEY not configured, using fallback response");
     return generateFallbackResponse(businessQuestion);
   }
 
+  console.log("Gemini client initialized, calling API...");
+  
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
@@ -37,9 +43,14 @@ Business Question: ${businessQuestion}`;
     const response = result.response;
     const text = response.text();
     
+    console.log("=== GEMINI RESPONSE RECEIVED ===");
+    console.log("Response length:", text?.length || 0);
+    
     return text || generateFallbackResponse(businessQuestion);
   } catch (error) {
+    console.error("=== GEMINI API ERROR ===");
     console.error("Gemini API error:", error);
+    console.log("Using fallback response instead");
     return generateFallbackResponse(businessQuestion);
   }
 }
