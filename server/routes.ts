@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, requireAuth } from "./auth";
 import { sendExpertRequestConfirmation, sendExpertResponseReady, sendAdminNotification, sendBasicThankYou, sendAIAnalystThankYou } from "./email";
+import { generateAIConsultingResponse } from "./ai";
 import { insertRequestSchema, updateRequestSchema, insertBasicQuestionSchema, updateBasicQuestionSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
@@ -116,31 +117,26 @@ export async function registerRoutes(
         sendAdminNotification(request.id, request.customerName, request.tier, request.description)
           .catch(err => console.error('Admin notification error:', err));
 
-        // Simulate AI processing
-        setTimeout(async () => {
-          let aiResponse = "AI Consultant Analysis:\n\n";
-          const desc = request.description.toLowerCase();
-          
-          if (desc.includes("market") || desc.includes("sell") || desc.includes("customer")) {
-            aiResponse += "Based on your query about market/sales:\n1. Analyze your current customer acquisition cost (CAC).\n2. Segment your audience for personalized messaging.\n3. Consider a referral program to leverage existing happy customers.";
-          } else if (desc.includes("employee") || desc.includes("team") || desc.includes("culture")) {
-            aiResponse += "Regarding your team/culture query:\n1. Foster psychological safety to encourage innovation.\n2. Review your compensation packages against market rates.\n3. Invest in professional development opportunities.";
-          } else if (desc.includes("money") || desc.includes("profit") || desc.includes("cost")) {
-            aiResponse += "Financial Analysis:\n1. Audit your recurring subscriptions and cut unused tools.\n2. Negotiate better terms with key suppliers.\n3. Focus on increasing the Lifetime Value (LTV) of existing clients.";
-          } else {
-            aiResponse += "Based on your input, we recommend a SWOT analysis to identify internal strengths and external opportunities. Ensure your strategic goals are SMART (Specific, Measurable, Achievable, Relevant, Time-bound).";
+        // Generate real AI response
+        (async () => {
+          try {
+            const aiResponse = await generateAIConsultingResponse(
+              request.customerName,
+              request.description
+            );
+            
+            await storage.updateRequest(request.id, {
+              status: 'completed',
+              response: aiResponse,
+            });
+
+            // Send thank you email with AI response to customer
+            sendAIAnalystThankYou(request.customerEmail, request.customerName, aiResponse)
+              .catch(err => console.error('AI Analyst thank you email error:', err));
+          } catch (error) {
+            console.error('AI response generation error:', error);
           }
-          
-          await storage.updateRequest(request.id, {
-            status: 'completed',
-            response: aiResponse,
-          });
-
-          // Send thank you email with AI response to customer
-          sendAIAnalystThankYou(request.customerEmail, request.customerName, aiResponse)
-            .catch(err => console.error('AI Analyst thank you email error:', err));
-
-        }, 4000);
+        })();
       }
       
       return res.status(201).json(request);
