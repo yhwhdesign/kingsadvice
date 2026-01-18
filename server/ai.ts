@@ -26,7 +26,7 @@ export async function generateAIConsultingResponse(customerName: string, busines
   console.log("Gemini client initialized, calling API...");
   
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
     const prompt = `You are an expert business consultant at Kings Advice, a premium consulting service.
 Provide thoughtful, actionable business advice based on the customer's specific question.
