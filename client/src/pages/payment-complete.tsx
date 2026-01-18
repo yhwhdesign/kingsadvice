@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2, Home, XCircle } from "lucide-react";
+import { CheckCircle, Loader2, Home, XCircle, FileText } from "lucide-react";
 import { Link } from "wouter";
 
 export default function PaymentComplete() {
   const [, setLocation] = useLocation();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [tierName, setTierName] = useState("");
+  const [basicResponse, setBasicResponse] = useState<{ topic: string; response: string } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -32,6 +33,11 @@ export default function PaymentComplete() {
             custom: "Expert Review",
           };
           setTierName(tierNames[data.tier] || "Consulting Service");
+          
+          // For Basic tier, capture the response to display immediately
+          if (data.tier === "basic" && data.topic && data.response) {
+            setBasicResponse({ topic: data.topic, response: data.response });
+          }
         } else if (data.status === "open") {
           setStatus("error");
         } else {
@@ -105,19 +111,37 @@ export default function PaymentComplete() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Your <span className="font-semibold text-foreground">{tierName}</span> request has been received and is being processed.
+            Your <span className="font-semibold text-foreground">{tierName}</span> request has been received{tierName !== "Basic Consult" ? " and is being processed" : ""}.
           </p>
-          <div className="bg-muted/50 rounded-lg p-4 text-sm">
-            {tierName === "Basic Consult" && (
-              <p>You will receive your response via email shortly.</p>
-            )}
-            {tierName === "AI Analyst" && (
-              <p>Our AI is analyzing your question. You will receive your response via email within a few minutes.</p>
-            )}
-            {tierName === "Expert Review" && (
-              <p>Our expert team has received your request. You will receive a detailed response via email within 24-48 hours.</p>
-            )}
-          </div>
+          
+          {/* Basic tier shows the answer immediately */}
+          {basicResponse && (
+            <div className="mt-6 text-left">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-lg">Your Consulting Response</h3>
+              </div>
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-5">
+                <p className="text-sm text-muted-foreground mb-2">Topic: <span className="text-foreground font-medium">{basicResponse.topic}</span></p>
+                <div className="prose prose-sm prose-invert max-w-none">
+                  <p className="text-foreground whitespace-pre-wrap leading-relaxed">{basicResponse.response}</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">A copy has also been sent to your email.</p>
+            </div>
+          )}
+          
+          {/* Other tiers show waiting message */}
+          {!basicResponse && (
+            <div className="bg-muted/50 rounded-lg p-4 text-sm">
+              {tierName === "AI Analyst" && (
+                <p>Our AI is analyzing your question. You will receive your response via email within a few minutes.</p>
+              )}
+              {tierName === "Expert Review" && (
+                <p>Our expert team has received your request. You will receive a detailed response via email within 24-48 hours.</p>
+              )}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="justify-center">
           <Link href="/">

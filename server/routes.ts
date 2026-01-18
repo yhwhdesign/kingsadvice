@@ -381,6 +381,13 @@ export async function registerRoutes(
             sendBasicThankYou(request.customerEmail, request.customerName, topic, response).catch((err) =>
               console.error("Basic thank you email error:", err)
             );
+
+            // Return the response immediately for Basic tier
+            return res.json({
+              ...result,
+              topic,
+              response,
+            });
           } else if (request.tier === "middle") {
             await storage.updateRequest(request.id, { status: "processing" });
 
